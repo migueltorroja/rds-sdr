@@ -10,6 +10,7 @@ class sourcefile(sourceifc):
         sourceifc.__init__(self)
         self.sampling_file_attributes=dict() 
         file_conf=split(filename,'__')
+        self.index_file=0
         for attribute in file_conf[1:]:
             re_comp=re.compile('([^_\.]+)_([^\.]*)')
             re_match=re_comp.match(attribute)
@@ -68,3 +69,8 @@ class sourcefile(sourceifc):
             return self.sampling_file_attributes['OSC']
         else:
             return None
+
+    def read_samples(self):
+        prev_index=self.index_file
+        samples = self.fileh.read(self.block_size)
+        

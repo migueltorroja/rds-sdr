@@ -22,7 +22,9 @@ class sourceifc:
         return None
     def get_osc_freq(self):
         return None
-    def set_block_size(self, block_size): 
-        self.block_size = block_size 
+    def set_block_size(self, block_size):
+        self.block_size = block_size
     def register_callbacks(self, callbacks ):
-        self.m_callbacks = [self.m_callbacks, callbacks] 
+        self.m_callbacks = [self.m_callbacks, callbacks]
+    def read_samples(self)
+        return [0, [] ]
