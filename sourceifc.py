@@ -1,6 +1,6 @@
-class source_ifc:
+class sourceifc:
     class out_callbacks:
-        def send_samples(self, samples):
+        def send_samples(self, timestamp, samples):
             pass
     S8_REAL         = 0
     S8_COMPLEX      = 1
@@ -14,6 +14,7 @@ class source_ifc:
     S32_LE_COMPLEX  = 9
     def __init__(self):
         self.m_callbacks = []
+        self.block_size = 256 
         pass
     def get_samples_types(self):
         return None
@@ -21,5 +22,7 @@ class source_ifc:
         return None
     def get_osc_freq(self):
         return None
+    def set_block_size(self, block_size): 
+        self.block_size = block_size 
     def register_callbacks(self, callbacks ):
-        self.m_callbacks = [self.m_callbacks callbacks] 
+        self.m_callbacks = [self.m_callbacks, callbacks] 
