@@ -1,4 +1,4 @@
-from sourceifc import sourceifc
+from sourceifc import sourceifc,source_sample_type
 import re
 from string import split
 import gzip
@@ -11,6 +11,7 @@ class sourcefile(sourceifc):
         self.sampling_file_attributes=dict() 
         file_conf=split(filename,'__')
         self.index_file=0
+        self.src_samp_type=source_sample_type('S8_IQ')
         for attribute in file_conf[1:]:
             re_comp=re.compile('([^_\.]+)_([^\.]*)')
             re_match=re_comp.match(attribute)
@@ -26,39 +27,16 @@ class sourcefile(sourceifc):
                         units = units*self.multiplier[multi]
                     self.sampling_file_attributes[key]=units
             elif key == 'ENC':
-                self.sampling_file_attributes[key]=value
+                self.src_samp_type=source_sample_type(value)
         if re.match('.*gz$',filename):
             self.fileh=gzip.open(filename,'rb')
         else:
             self.fileh=open(filename,'rb')
     def __del__(self):
-        self.fileh.close()
+        #self.fileh.close()
+        pass
     def get_samples_types(self):
-        if 'ENC' not in self.sampling_file_attributes.keys():
-            return None
-        enc_string=self.sampling_file_attributes['ENC'] 
-        if enc_string == 'S8':
-            return self.S8_REAL
-        elif enc_string == 'S8_IQ':
-            return self.S8_COMPLEX
-        elif enc_string == 'S16_BE':
-            return self.S16_BE_REAL
-        elif enc_string == 'S16_BE_IQ':
-            return self.S16_BE_COMPLEX
-        elif enc_string == 'S16_LE':
-            return self.S16_LE_REAL
-        elif enc_string == 'S16_LE_IQ':
-            return self.S16_LE_COMPLEX
-        elif enc_string == 'S32_LE':
-            return self.S32_LE_REAL
-        elif enc_string == 'S32_LE_IQ':
-            return self.S32_LE_COMPLEX
-        elif enc_string == 'S32_BE':
-            return self.S32_BE_REAL
-        elif enc_string == 'S32_BE_IQ':
-            return self.S32_BE_COMPLEX
-        else:
-            return None
+        return self.src_samp_type 
     def get_sampling_rate(self):
         if 'SR' in self.sampling_file_attributes.keys():
             return self.sampling_file_attributes['SR']
@@ -72,5 +50,9 @@ class sourcefile(sourceifc):
 
     def read_samples(self):
         prev_index=self.index_file
-        samples = self.fileh.read(self.block_size)
-        
+        nbytes=self.src_samp_type.nsamples_in_nbytes(self.block_size)
+        rawdata=self.fileh.read(nbytes)
+        samples=self.src_samp_type.raw_data_to_samples(rawdata)
+        self.index_file += block_size
+        self._send_to_sinks(prev_index, samples)
+        return [prev_index, samples]
