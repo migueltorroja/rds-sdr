@@ -4,54 +4,49 @@ import numpy as np
 class source_sample_type:
     def __init__(self,enc_string):
         if enc_string == 'S8':
-            self.encoding_bytes_per_sample = 1
-            self.encoding_is_little_endian = True 
-            self.encoding_is_complex = False
+            self.dtype=np.dtype([('I',np.uint8)])
         elif enc_string == 'S8_IQ':
-            self.encoding_bytes_per_sample = 1
-            self.encoding_is_little_endian = True 
-            self.encoding_is_complex = True 
+            self.dtype=np.dtype([('I',np.uint8),('Q',np.uint8)])
         elif enc_string == 'S16_BE':
-            self.encoding_bytes_per_sample = 2 
-            self.encoding_is_little_endian = False 
-            self.encoding_is_complex = False 
+            self.dtype=np.dtype([('I','>h')])
         elif enc_string == 'S16_BE_IQ':
-            self.encoding_bytes_per_sample = 2 
-            self.encoding_is_little_endian = False 
-            self.encoding_is_complex = True 
+            self.dtype=np.dtype([('I','>h'),('Q','>h')])
         elif enc_string == 'S16_LE':
-            self.encoding_bytes_per_sample = 2 
-            self.encoding_is_little_endian = True 
-            self.encoding_is_complex = False 
+            self.dtype=np.dtype([('I','<h')])
         elif enc_string == 'S16_LE_IQ':
-            self.encoding_bytes_per_sample = 2 
-            self.encoding_is_little_endian = True 
-            self.encoding_is_complex = True 
+            self.dtype=np.dtype([('I','<h'),('Q','<h')])
         elif enc_string == 'S32_LE':
-            self.encoding_bytes_per_sample = 4
-            self.encoding_is_little_endian = True 
-            self.encoding_is_complex = False 
+            self.dtype=np.dtype([('I','<i')])
         elif enc_string == 'S32_LE_IQ':
-            self.encoding_bytes_per_sample = 4
-            self.encoding_is_little_endian = True 
-            self.encoding_is_complex = True 
+            self.dtype=np.dtype([('I','<i'),('Q','<i')])
         elif enc_string == 'S32_BE':
-            self.encoding_bytes_per_sample = 4
-            self.encoding_is_little_endian = False 
-            self.encoding_is_complex = False 
+            self.dtype=np.dtype([('I','>i')])
         elif enc_string == 'S32_BE_IQ':
-            self.encoding_bytes_per_sample = 4
-            self.encoding_is_little_endian = False
-            self.encoding_is_complex = True
-    def raw_data_to_samples(self,rawdata):
-        if self.encoding_is_complex:
-            samples = np.array(rawdata[0::2]) + np.array(rawdata[1::2])*1j
-        return samples
-    def nsamples_in_nbytes(self,nsamples):
-        nbytes=self.encoding_bytes_per_sample
-        if self.encoding_is_complex:
-            nbytes = nbytes*2
-        return nbytes
+            self.dtype=np.dtype([('I','>i'),('Q','>i')])
+
+    def frombuffer(self,rawdata):
+        npa=np.frombuffer(rawdata,self.dtype)
+        return self._convert_to_complex(npa) 
+
+    def fromfile(self,fileh,count):
+        npa=np.fromfile(fileh,self.dtype,count)
+        return self._convert_to_complex(npa) 
+
+    def nbytes(self):
+        return self.dtype.nbytes
+
+    def _is_complex_type(self):
+        fields = self.dtype.fields
+        if 'I' in fields and 'Q' in fields:
+            return True
+        else:
+            return False
+
+    def _convert_to_complex(self,buf_array):
+        if not self._is_complex_type():
+            return buf_array 
+        else:
+            return buf_array['I'] + buf_array['Q']*1j
 
 class sourceifc:
     class out_callbacks:

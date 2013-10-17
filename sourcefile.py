@@ -35,7 +35,7 @@ class sourcefile(sourceifc):
     def __del__(self):
         #self.fileh.close()
         pass
-    def get_samples_types(self):
+    def get_samples_type(self):
         return self.src_samp_type 
     def get_sampling_rate(self):
         if 'SR' in self.sampling_file_attributes.keys():
@@ -50,9 +50,8 @@ class sourcefile(sourceifc):
 
     def read_samples(self):
         prev_index=self.index_file
-        nbytes=self.src_samp_type.nsamples_in_nbytes(self.block_size)
-        rawdata=self.fileh.read(nbytes)
-        samples=self.src_samp_type.raw_data_to_samples(rawdata)
+        buff=self.fileh.read(self.block_size*self.src_samp_type.nbytes())
+        samples=self.src_samp_type.frombuffer(buff)
         self.index_file += block_size
         self._send_to_sinks(prev_index, samples)
         return [prev_index, samples]
