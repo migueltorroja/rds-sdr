@@ -4,9 +4,9 @@ import numpy as np
 class source_sample_type:
     def __init__(self,enc_string):
         if enc_string == 'S8':
-            self.dtype=np.dtype([('I',np.uint8)])
+            self.dtype=np.dtype([('I',np.int8)])
         elif enc_string == 'S8_IQ':
-            self.dtype=np.dtype([('I',np.uint8),('Q',np.uint8)])
+            self.dtype=np.dtype([('I',np.int8),('Q',np.int8)])
         elif enc_string == 'S16_BE':
             self.dtype=np.dtype([('I','>h')])
         elif enc_string == 'S16_BE_IQ':
