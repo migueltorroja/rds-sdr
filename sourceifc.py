@@ -75,7 +75,7 @@ class sourceifc:
     def set_block_size(self, block_size):
         self.block_size = block_size
     def register_callbacks(self, callbacks ):
-        self.m_callbacks = [self.m_callbacks, callbacks]
+        self.m_callbacks.append(callbacks)
     def read_samples(self):
         return [0, [] ]
     def _send_to_sinks(self,timestamp, samples):
