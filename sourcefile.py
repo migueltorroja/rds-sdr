@@ -50,8 +50,9 @@ class sourcefile(sourceifc):
 
     def read_samples(self):
         prev_index=self.index_file
-        buff=self.fileh.read(self.block_size*self.src_samp_type.nbytes())
-        samples=self.src_samp_type.frombuffer(buff)
-        self.index_file += block_size
+        #buff=self.fileh.read(self.block_size*self.src_samp_type.nbytes())
+        #samples=self.src_samp_type.frombuffer(buff)
+        samples=self.src_samp_type.fromfile(self.fileh,self.block_size)
+        self.index_file += self.block_size
         self._send_to_sinks(prev_index, samples)
         return [prev_index, samples]
