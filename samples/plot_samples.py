@@ -27,10 +27,13 @@ for i in range(-5,5):
     pl.subplot(211)
     pl.plot(x_axis_range,pl.real(decimated_samples),'b',
             x_axis_range,pl.imag(decimated_samples),'r')
+    pl.title('IQ Samples')
     pl.subplot(212)
     pl.plot(x_axis_range,pl.arctan(pl.imag(decimated_samples)/pl.real(decimated_samples)))
+    pl.title('Phase')
     pl.figure(2)
     f_range=pl.frange(-sampling_rate/2 , sampling_rate/2 ,(sampling_rate)/len_iq_samples)
     print len(f_range), len_iq_samples
     pl.plot(f_range[0:len_iq_samples],abs(pl.fft(iq_samples)))
+    pl.plot('FFT of IQ Samples')
     pl.show()
