@@ -2,16 +2,6 @@ class source_ifc:
     class out_callbacks:
         def send_samples(self, samples):
             pass
-    S8_REAL         = 0
-    S8_COMPLEX      = 1
-    S16_BE_REAL     = 2
-    S16_BE_COMPLEX  = 3
-    S32_BE_REAL     = 4
-    S32_BE_COMPLEX  = 5
-    S16_LE_REAL     = 6
-    S16_LE_COMPLEX  = 7
-    S32_LE_REAL     = 8
-    S32_LE_COMPLEX  = 9
     def __init__(self):
         self.m_callbacks = []
         pass
