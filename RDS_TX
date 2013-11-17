@@ -1,0 +1,150 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+class RDS_tx:
+    
+    '''RDS Modulator. Useful for RDS SDR unit tests. Provides a few useful methods:
+    RDSZeros([numbBits]) returns the modulated zero numBits number into RDS modulated symbols
+    RDSOnes([numBits])  returns the modulated one numBits number into RDS modulated symbols
+    RDSAlt([numBits]) returns a zero-one alternating sequence into RDS modulated symbols
+    RDSBitPattern(bitPattern) returns the modulated symbols for a given bitPattern
+    PlotDemo() displays several plots along the modulating chain of 20 random bits'''
+    
+    
+    def __init__(self, fSampling=2e6, totalBits=25):
+        # Constants
+        self.subCarrierFreq = 57e3
+        self.bitRate = self.subCarrierFreq/48
+        self.numBits = totalBits
+        self.fs = fSampling
+        self.totalTime = totalBits/self.bitRate
+        self.samplesPerBit = float(self.fs)/self.bitRate
+        self.t=np.arange(0,self.totalTime,1.0/self.fs) # Time vector
+        self.f = np.arange(-self.fs/2, self.fs/2,self.fs/len(self.t)) # Symmetric Frequency vector
+ 
+    def __UpSample(self,arr, factor):
+        return np.array([arr[int(j)] for j in np.arange(0,len(arr),1.0/factor)])   
+    
+    def __DiffEncode(self, Bits):
+    #Returns Differentially encode bits from a given bit pattern
+        outBits = np.zeros(len(Bits))
+        outBits[0]=-1
+        for j in range(len(Bits )-1):
+            outBits[j+1]=-outBits[j]*Bits[j]
+        upOutBits = self.__UpSample(outBits,self.samplesPerBit)
+        return upOutBits
+    
+    def __BipolarImpulses(self, Bits):
+    # Bipolar impulses spaced at 1/4 (ones) and 3/4 (minus ones) of a data bit
+        onesTrain = np.zeros(len(self.t))
+        minusOnesTrain=np.zeros(len(self.t))
+        for ii in np.arange(1,4*len(self.t)/self.samplesPerBit,4):
+            onesTrain[int(self.samplesPerBit*ii/4) - 1]=1
+            minusOnesTrain[int(self.samplesPerBit*(ii+2)/4)-1]=-1  
+        bipolarTrain = onesTrain + minusOnesTrain # "Unmodulated" bipolar pulses
+        return bipolarTrain * Bits    # Now with the databits
+
+
+    def __CosineFilter(self, bipolarBits):
+    # Now we need to low pass filter in order to limit bandwidth
+    # First, we do the FFT of the time-domain sequence, then
+    # we multiply it by the known transfer function Hf=cos(pi*f*td/4), |f|<= 2/td
+    # and zero otherwise, where td = 1 / bitRate.
+    # Finally, we do the iFFT of the resulting product
+    # Doing this at the IF sampling rate (i.e. 2 MHz) is clearly an overkill, best would be to do it all
+    # at a lower sampling rate (hundreds of KHz) and then upsample with lagrange or sinc interpolation
+
+        freqResponseBits = np.fft.fft(bipolarBits)  # Extends from zero to fs with fs/len(bipolarBits) resolution
+        f=np.arange(0, self.fs/2,self.fs/len(bipolarBits))    # Axis for half of the frequency response
+        td = 1.0 / self.bitRate
+        HfHalf = np.cos(np.pi*f*td/4)               # Shaping filter transfer function
+        zeroIndex = int((2.0/td)/(self.fs/len(bipolarBits))) # Zeroing elements beyond the first null of the cosine
+        HfHalf[zeroIndex+1:]=np.zeros(len(HfHalf[zeroIndex+1:]))
+        HfHalfMirror = HfHalf[::-1] # Reverse array
+        if (len(bipolarBits)%2 == 1): 
+            HfHalfMirror = HfHalfMirror[1:]  # Remove central zero if odd length
+        Hf = np.concatenate([HfHalf,HfHalfMirror]) # Make H(f) symmetric (real)
+        filteredFreqResponse = Hf * freqResponseBits
+        return np.real(np.fft.ifft(filteredFreqResponse))       
+              
+    def __IFModulate(self, filteredBits):
+    # Modulate the 57 kHz subcarrier with the filtered bits
+        return filteredBits * np.cos(2*np.pi*self.subCarrierFreq*self.t)
+
+                            
+    def RDSZeros(self):
+    # Source data bits are zeros
+        dataBits = -1*np.ones(self.numBits)
+        diffBits = self.__DiffEncode(dataBits)
+        bipolarBits = self.__BipolarImpulses(diffBits)
+        filteredBits = self.__CosineFilter(bipolarBits)
+        return self.__IFModulate(filteredBits)
+        
+        
+    def RDSOnes(self):
+    # Source data bits are ones
+        dataBits = np.ones(self.numBits)
+        diffBits = self.__DiffEncode(dataBits)
+        bipolarBits = self.__BipolarImpulses(diffBits)
+        filteredBits = self.__CosineFilter(bipolarBits)
+        return self.__IFModulate(filteredBits)
+        
+    def RDSAlt(self):
+    # Source data bits are alternating ones and zeros
+        dataBits = np.ones(self.numBits)
+        dataBits[1::2]= -1*np.ones(len(dataBits[1::2]))
+        diffBits = self.__DiffEncode(dataBits)
+        bipolarBits = self.__BipolarImpulses(diffBits)
+        filteredBits = self.__CosineFilter(bipolarBits)
+        return self.__IFModulate(filteredBits)
+        
+    def RDSBitPattern(self,bitPattern):
+    # Source data bits are passed in bitPattern
+        #upDataBits = self.__UpSample(bitPattern,self.samplesPerBit)
+        assert len(bitPattern) == self.numBits
+        diffBits = self.__DiffEncode(bitPattern)
+        bipolarBits = self.__BipolarImpulses(diffBits)
+        filteredBits = self.__CosineFilter(bipolarBits)
+        return self.__IFModulate(filteredBits)
+        
+    def PlotDemo(self):
+    # Plots __numBits random bits    
+        dataBits = np.sign(np.random.randn(self.numBits))            # Random numBits bits
+        upDataBits = self.__UpSample(dataBits,self.samplesPerBit)    # Upsample to fSampling
+        diffBits = self.__DiffEncode(dataBits)                       # Diff Encode
+        bipolarBits = self.__BipolarImpulses(diffBits)               # Bipolar Impulses
+        filteredBits = self.__CosineFilter(bipolarBits)              # Filtered Bits
+        rdsSignal = self.__IFModulate(filteredBits)                  # Modulated on IF Carrier
+        rdsSpectrum = np.fft.fftshift(abs(np.fft.fft(rdsSignal)))    # RDS spectrum
+                              
+        plt.figure(1)
+        plt.subplot(231)
+        plt.plot(np.arange(len(upDataBits)),upDataBits,'b')
+        plt.title('Source Data Bits')
+        plt.axis([-1,len(self.t),-1.2,1.2])
+        plt.grid(True)
+        plt.subplot(234)
+        plt.plot(np.arange(len(diffBits)),diffBits,'b')
+        plt.title('Diff. Encoded Bits')
+        plt.axis([-1,len(self.t),-1.2,1.2])
+        plt.grid(True)
+        plt.subplot(232)
+        plt.plot(np.arange(len(bipolarBits)),bipolarBits,'r')
+        plt.title('Bipolar Impulse Bits')
+        plt.axis([-1,len(self.t),-1.2,1.2])
+        plt.grid(True)
+        plt.subplot(235)
+        plt.plot(np.arange(len(filteredBits)),filteredBits,'r')
+        plt.title('Filtered Bits')
+        plt.axis([-1,len(self.t),-0.002,0.002])
+        plt.grid(True)
+        plt.subplot(233)
+        plt.plot(np.arange(len(rdsSignal)),rdsSignal,'g')
+        plt.title('57 kHz RDS Signal')
+        plt.axis([-1,len(self.t),-0.002,0.002])
+        plt.grid(True)
+        plt.subplot(236)
+        plt.plot(self.f,rdsSpectrum,'g')
+        plt.title('RDS Signal Spectrum')
+        plt.grid(True)
+        plt.show()
